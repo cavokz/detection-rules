@@ -38,25 +38,31 @@ def get_random_string(min_length, condition=None, allowed_chars=string.ascii_let
         l.insert(random.randrange(len(l)), random.choice(allowed_chars))
     return "".join(l)
 
-def get_random_octets(n):
-    return random.choices(range(1, 255), k=n)
-
-def fuzzy_ip(nr_octets, sep, fmt, condition = None):
+def get_fuzzy_octets(n=4):
     if fuzziness_level:
-        octets = get_random_octets(nr_octets)
+        return random.choices(range(1, 255), k=n)
     else:
-        octets = [1] * nr_octets
+        return tuple(range(1, n + 1))
+
+def get_fuzzy_quartets(n=8):
+    if fuzziness_level:
+        return random.choices(range(1, 0xffff), k=n)
+    else:
+        return tuple(range(1, n + 1))
+
+def fuzzy_ip(get_parts, sep, fmt, condition = None):
+    parts = get_parts()
     def to_str(o):
         return sep.join(fmt.format(x) for x in o)
-    while condition and not condition(to_str(octets)):
-        octets = get_random_octets(nr_octets)
-    return to_str(octets)
+    while condition and not condition(to_str(parts)):
+        parts = get_parts()
+    return to_str(parts)
 
-def fuzzy_ipv4(*args, **kwargs):
-    return fuzzy_ip(4, ".", "{:d}")
+def fuzzy_ipv4(condition):
+    return fuzzy_ip(get_fuzzy_octets, ".", "{:d}", condition)
 
-def fuzzy_ipv6(*args, **kwargs):
-    return fuzzy_ip(6, ":", "{:x}")
+def fuzzy_ipv6(condition):
+    return fuzzy_ip(get_fuzzy_quartets, ":", "{:x}", condition)
 
 def fuzzy_choice(options):
     if fuzziness_level:
@@ -80,3 +86,7 @@ def expand_wildcards(s, allowed_chars=string.ascii_letters+string.digits):
         else:
             chars.append(c)
     return "".join(chars)
+
+def generate_ip_address(condition=None):
+    fuzzy_ip = fuzzy_choice([fuzzy_ipv6, fuzzy_ipv4])
+    return fuzzy_ip(condition)

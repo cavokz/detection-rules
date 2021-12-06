@@ -186,6 +186,16 @@ eql_event_docs_complete = {
         {"event": {"category": ["process"], "type": ["start"]}, "process": {"args": ["dump-keychain", "-d"]}},
         {"event": {"category": ["process"], "type": ["process_started"]}, "process": {"args": ["dump-keychain", "-d"]}},
     ],
+
+    """network where destination.ip == "127.0.0.1"
+    """: [
+        {'event': {'category': ['network']}, 'destination': {'ip': '127.0.0.1'}},
+    ],
+
+    """network where destination.ip != "127.0.0.1"
+    """: [
+        {'event': {'category': ['network']}, 'destination': {'ip': '1:2:3:4:5:6:7:8'}},
+    ],
 }
 
 eql_sequence_docs_complete = {
