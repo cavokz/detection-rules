@@ -28,6 +28,13 @@ def emit(node: eql.ast.BaseNode) -> List[str]:
 def emit_Field(node: eql.ast.Field, value):
     return Constraints(node.render(), "==", value)
 
+@emitter(eql.ast.Boolean)
+def emit_Boolean(node: eql.ast.Boolean):
+    constraints = []
+    if node.value:
+        constraints.append(Constraints())
+    return constraints
+
 @emitter(eql.ast.Or)
 def emit_Or(node: eql.ast.Or):
     constraints = []
@@ -149,7 +156,6 @@ def emit_FunctionCall(node: eql.ast.FunctionCall):
 @emitter(eql.ast.String)
 @emitter(eql.ast.Number)
 @emitter(eql.ast.Null)
-@emitter(eql.ast.Boolean)
 @emitter(eql.ast.TimeRange)
 @emitter(eql.ast.TimeUnit)
 @emitter(eql.ast.IsNotNull)
