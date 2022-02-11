@@ -20,42 +20,25 @@ from detection_rules.ast_dag import draw_ast, Digraph
 __all__ = (
     "emit",
     "draw",
-    "draw_and_emit",
-    "emit_and_draw",
 )
 
 random.seed("presentation")
 
-def parse(query):
-    with eql.parser.elasticsearch_syntax:
-        return eql.parse_query(query)
-
-def emit(query):
+def emit(query, timestamp=False, draw=False):
     try:
-        return emitter.emit_docs(parse(query))
+        with eql.parser.elasticsearch_syntax:
+            ast = eql.parse_query(query)
+        branches = emitter.branches_from_ast(ast)
+        docs = emitter.docs_from_branches(branches, timestamp)
     except Exception as e:
         print(e)
+    if draw:
+        display(draw_ast(ast), docs)
+    else:
+        display(docs)
 
 def draw(query):
     try:
         return draw_ast(parse(query))
-    except Exception as e:
-        print(e)
-
-def draw_and_emit(query):
-    try:
-        ast = parse(query)
-        graph = draw_ast(ast)
-        docs = emitter.emit_docs(ast)
-        display(graph, docs)
-    except Exception as e:
-        print(e)
-
-def emit_and_draw(query):
-    try:
-        ast = parse(query)
-        graph = draw_ast(ast)
-        docs = emitter.emit_docs(ast)
-        display(docs, graph)
     except Exception as e:
         print(e)

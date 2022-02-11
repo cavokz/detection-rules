@@ -27,7 +27,7 @@ def _nope(operation: Any, negate: bool) -> Any:
     return operation if not negate else negation.get(operation, not operation)
 
 def emit(node: eql.ast.BaseNode, negate: bool) -> List[Branch]:
-    return emitter.emit(node, negate)
+    return emitter.branches_from_ast(node, negate)
 
 @emitter(eql.ast.Field)
 def emit_Field(node: eql.ast.Field, value: str, negate: bool) -> List[Branch]:

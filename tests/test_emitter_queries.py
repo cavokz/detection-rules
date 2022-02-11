@@ -154,7 +154,7 @@ eql_mono_branch_mono_doc = {
 
     """process where process.name : ("*.EXE", "*.DLL")
     """: [
-        [{"event": {"category": ["process"]}, "process": {"name": "leneqzksddgex.exe"}}],
+        [{"event": {"category": ["process"]}, "process": {"name": "leneqzk.exe"}}],
     ],
 
     """network where destination.ip == "127.0.0.1"
@@ -448,7 +448,7 @@ class TestQueries(QueryTestCase, SeededTestCase, unittest.TestCase):
                 def emit(query):
                     with eql.parser.elasticsearch_syntax:
                         try:
-                            return emitter.emit_docs(eql.parse_query(query))
+                            return emitter.docs_from_ast(eql.parse_query(query), timestamp=False)
                         except Exception as e:
                             print(e)
             """),
@@ -471,7 +471,7 @@ class TestQueries(QueryTestCase, SeededTestCase, unittest.TestCase):
             for query, mappings in eql_event_docs_mappings.items():
                 with self.subTest(query):
                     emitter.reset_mappings()
-                    _ = emitter.emit_docs(eql.parse_query(query))
+                    _ = emitter.docs_from_ast(eql.parse_query(query), timestamp=False)
                     self.assertEqual(mappings, emitter.emit_mappings())
 
     @nb.chapter("## Mono-branch mono-document")

@@ -105,7 +105,7 @@ class QueryTestCase:
         return super(QueryTestCase, self).subTest(query, **kwargs, seed=query)
 
     def assertQuery(self, query, docs):
-        self.assertEqual(docs, emitter.emit_docs(eql.parse_query(query)))
+        self.assertEqual(docs, emitter.docs_from_ast(eql.parse_query(query), timestamp=False))
 
 
 class OnlineTestCase:

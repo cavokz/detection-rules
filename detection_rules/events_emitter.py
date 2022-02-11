@@ -66,7 +66,7 @@ class emitter:
         cls.mappings_fields = set()
 
     @classmethod
-    def emit(cls, node, negate=False):
+    def branches_from_ast(cls, node, negate=False):
         return cls.emitters[type(node)].wrapper(node, negate)
 
     @classmethod
@@ -106,30 +106,28 @@ class emitter:
         return value
 
     @classmethod
-    def docs_from_branch(cls, branch):
+    def docs_from_branch(cls, branch, timestamp=True):
         docs = []
-        for constraints in branch:
+        for t,constraints in enumerate(branch):
             doc = {}
             for field,value in constraints.resolve(cls.schema):
                 if value is not None:
                     deep_merge(doc, cls.emit_field(field, value))
+            if timestamp:
+                deep_merge(doc, cls.emit_field("@timestamp", int(time.time() * 1000) + t))
             docs.append(doc)
         return docs
 
     @classmethod
-    def emit_docs(cls, ast):
-        branches = cls.emit(ast)
+    def docs_from_branches(cls, branches, timestamp=True):
         if not branches:
             raise ValueError("Cannot trigger with any document")
-        return [cls.docs_from_branch(branch) for branch in branches]
+        return [cls.docs_from_branch(branch, timestamp) for branch in branches]
 
     @classmethod
-    def docs_from_ast(cls, ast):
-        docs = cls.emit_docs(ast)
-        for t,doc in enumerate(chain(*docs)):
-            deep_merge(doc, cls.emit_field("@timestamp", int(time.time() * 1000) + t))
-            deep_merge(doc, cls.emit_field("ecs.version", cls.ecs_version))
-        return docs
+    def docs_from_ast(cls, ast, timestamp=True):
+        branches = cls.branches_from_ast(ast)
+        return cls.docs_from_branches(branches, timestamp)
 
 
 def emit_docs(rule: AnyRuleData) -> List[str]:
