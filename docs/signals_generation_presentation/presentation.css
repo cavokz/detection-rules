@@ -62,7 +62,7 @@ div.cell.code_cell.rendered.selected::before {
 div.cell {
 	border-color: transparent;
 	border-width: 0px;
-	width: 80%;
+	width: 70%;
 	margin: auto;
 }
 

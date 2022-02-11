@@ -146,6 +146,12 @@ class Constraints:
     def __eq__(self, other):
         return self.constraints == other.constraints
 
+    def __str__(self):
+        return str(self.constraints)
+
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        return {"text/plain": str(self.constraints)}
+
     @staticmethod
     def from_dict(other):
         c = Constraints()
@@ -432,6 +438,12 @@ class Constraints:
 class Branch(List[Constraints]):
     def __mul__(self, other):
         return Branch([x+y for x in self for y in other])
+
+    def __str__(self):
+        return "[" + ", ".join(str(c) for c in self) + "]"
+
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        return {"text/plain": "[" + ", ".join(str(c) for c in self) + "]"}
 
     @classmethod
     def chain(cls, branches):
