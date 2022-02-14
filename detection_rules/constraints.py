@@ -133,6 +133,9 @@ class Constraints:
                 raise ConflictError(f"cannot be null", field)
             self.constraints[field].extend(constraints)
 
+    def fields(self):
+        return self.constraints.keys()
+
     def __iadd__(self, other):
         for field,constraints in other.constraints.items():
             self.extend_constraints(field, constraints)
@@ -444,6 +447,12 @@ class Branch(List[Constraints]):
 
     def _repr_mimebundle_(self, include=None, exclude=None):
         return {"text/plain": "[" + ", ".join(str(c) for c in self) + "]"}
+
+    def fields(self):
+        return chain(*(constraints.fields() for constraints in self))
+
+    def resolve(self, schema):
+        return (constraints.resolve(schema) for constraints in self)
 
     @classmethod
     def chain(cls, branches):

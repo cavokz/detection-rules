@@ -22,7 +22,7 @@ __all__ = (
     "get_ast_stats",
 )
 
-custom_schema = {
+default_custom_schema = {
     "file.Ext.windows.zone_identifier": {
         "type": "long",
     },
@@ -67,10 +67,38 @@ def ast_from_rule(rule):
     else:
         raise NotImplementedError(f"Unsupported query language: {rule.language}")
 
+def emit_field(field, value):
+    for part in reversed(field.split(".")):
+        value = {part: value}
+    return value
+
+def docs_from_branch(branch, schema, timestamp=True):
+    for t,solution in enumerate(branch.resolve(schema)):
+        doc = {}
+        for field,value in solution:
+            if value is not None:
+                deep_merge(doc, emit_field(field, value))
+        if timestamp:
+            deep_merge(doc, emit_field("@timestamp", int(time.time() * 1000) + t))
+        yield doc
+
+def emit_mappings(fields, schema):
+    mappings = {}
+    for field in fields:
+        try:
+            field_type = schema[field]["type"]
+        except KeyError:
+            field_type = "keyword"
+        value = {"type": field_type}
+        for part in reversed(field.split(".")):
+            value = {"properties": {part: value}}
+        deep_merge(mappings, value)
+    return mappings
+
 class emitter:
     ecs_version = get_max_version()
     ecs_schema = get_schema(version=ecs_version)
-    schema = deep_merge(custom_schema, ecs_schema)
+    schema = deep_merge(default_custom_schema, ecs_schema)
 
     emitters = {}
     mappings_fields = set()
@@ -96,15 +124,7 @@ class emitter:
         return wrapper
 
     @classmethod
-    def add_mappings_field(cls, field):
-        cls.mappings_fields.add(field)
-
-    @classmethod
-    def reset_mappings(cls):
-        cls.mappings_fields = set()
-
-    @classmethod
-    def branches_from_ast(cls, node, negate=False):
+    def emit(cls, node, negate=False):
         return cls.emitters[type(node)].wrapper(node, negate)
 
     @classmethod
@@ -112,50 +132,46 @@ class emitter:
         return {k.__name__: (v.successful, v.total) for k,v in cls.emitters.items()}
 
     @classmethod
-    def emit_mappings(cls):
-        mappings = {}
-        for field in cls.mappings_fields:
-            try:
-                field_type = cls.schema[field]["type"]
-            except KeyError:
-                field_type = "keyword"
-            value = {"type": field_type}
-            for part in reversed(field.split(".")):
-                value = {"properties": {part: value}}
-            deep_merge(mappings, value)
-        return mappings
-
-    @classmethod
-    def emit_field(cls, field, value):
-        cls.add_mappings_field(field)
-        for part in reversed(field.split(".")):
-            value = {part: value}
-        return value
-
-    @classmethod
-    def docs_from_branch(cls, branch, timestamp=True):
-        docs = []
-        for t,constraints in enumerate(branch):
-            doc = {}
-            for field,value in constraints.resolve(cls.schema):
-                if value is not None:
-                    deep_merge(doc, cls.emit_field(field, value))
-            if timestamp:
-                deep_merge(doc, cls.emit_field("@timestamp", int(time.time() * 1000) + t))
-            docs.append(doc)
-        return docs
-
-    @classmethod
     def docs_from_branches(cls, branches, timestamp=True):
         if not branches:
             raise ValueError("Cannot trigger with any document")
-        return [cls.docs_from_branch(branch, timestamp) for branch in branches]
+        return (docs_from_branch(branch, cls.schema, timestamp) for branch in branches)
 
     @classmethod
     def docs_from_ast(cls, ast, timestamp=True):
-        branches = cls.branches_from_ast(ast)
+        branches = cls.emit(ast)
         return cls.docs_from_branches(branches, timestamp)
 
+
+class SourceEvents:
+    def __init__(self, ecs_version=get_max_version(), custom_schema=None):
+        ecs_schema = get_schema(version=ecs_version)
+        if custom_schema is None:
+            custom_schema = default_custom_schema
+        self.schema = deep_merge(custom_schema, ecs_schema)
+        self.ecs_version = ecs_version
+        self.branches = {}
+
+    def add_query(self, query):
+        ast = ast_from_query(query)
+        branches = emitter.emit(ast)
+        if not branches:
+            raise ValueError(f"Query without branches")
+        self.branches[query] = branches
+
+    def add_rule(self, rule):
+        ast = ast_from_rule(rule)
+        branches = emitter.emit(ast)
+        if not branches:
+            raise ValueError(f"Query without branches")
+        self.branches[rule] = branches
+
+    def emit_mappings(self):
+        fields = set()
+        for branches in self.branches.values():
+            for branch in branches:
+                fields |= set(branch.fields())
+        return emit_mappings(fields, self.schema)
 
 def emit_docs(rule: AnyRuleData) -> List[str]:
     ast = ast_from_rule(rule)

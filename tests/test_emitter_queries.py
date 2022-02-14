@@ -9,7 +9,7 @@ import os
 import unittest
 
 from tests.utils import *
-from detection_rules.events_emitter import emitter, ast_from_query
+from detection_rules.events_emitter import SourceEvents, emitter, ast_from_query
 from detection_rules import jupyter
 
 
@@ -476,9 +476,9 @@ class TestQueries(QueryTestCase, SeededTestCase, unittest.TestCase):
     def test_mappings(self):
         for query, mappings in event_docs_mappings.items():
             with self.subTest(query):
-                emitter.reset_mappings()
-                _ = emitter.docs_from_ast(ast_from_query(query), timestamp=False)
-                self.assertEqual(mappings, emitter.emit_mappings())
+                se = SourceEvents()
+                se.add_query(query)
+                self.assertEqual(mappings, se.emit_mappings())
 
     @nb.chapter("## Mono-branch mono-document")
     def test_mono_branch_mono_doc(self, cells):

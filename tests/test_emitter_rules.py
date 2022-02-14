@@ -74,7 +74,7 @@ class TestRules(QueryTestCase, SeededTestCase, unittest.TestCase):
         errors = {}
         for rule,ast in zip(rules, asts):
             try:
-                _ = emitter.docs_from_ast(ast)
+                _ = [list(branch) for branch in emitter.docs_from_ast(ast)]
             except Exception as e:
                 errors.setdefault(str(e), []).append(rule)
                 continue
