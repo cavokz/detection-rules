@@ -31,6 +31,42 @@ custom_schema = {
     },
 }
 
+def ast_from_eql_query(query):
+    import eql
+    with eql.parser.elasticsearch_syntax:
+        return eql.parse_query(query)
+
+def ast_from_kql_query(query):
+    import kql
+    return kql.to_eql(query)
+
+def ast_from_query(query):
+    exceptions = []
+    try:
+        return ast_from_eql_query(query)
+    except Exception as e:
+        exceptions.append(("EQL", e))
+    try:
+        return ast_from_kql_query(query)
+    except Exception as e:
+        exceptions.append(("KQL", e))
+    def rank(e):
+        line = getattr(e[1], "line", -1)
+        column = getattr(e[1], "column", -1)
+        return (line, column)
+    lang,error = sorted(exceptions, key=rank)[-1]
+    raise ValueError(f"{lang} query error: {error}")
+
+def ast_from_rule(rule):
+    if rule.type not in ("query", "eql"):
+        raise NotImplementedError(f"Unsupported rule type: {rule.type}")
+    elif rule.language == "eql":
+        return rule.validator.ast
+    elif rule.language == "kuery":
+        return rule.validator.to_eql() # shortcut?
+    else:
+        raise NotImplementedError(f"Unsupported query language: {rule.language}")
+
 class emitter:
     ecs_version = get_max_version()
     ecs_schema = get_schema(version=ecs_version)
@@ -90,17 +126,6 @@ class emitter:
         return mappings
 
     @classmethod
-    def ast_from_rule(cls, rule):
-        if rule.type not in ("query", "eql"):
-            raise NotImplementedError(f"Unsupported rule type: {rule.type}")
-        elif rule.language == "eql":
-            return rule.validator.ast
-        elif rule.language == "kuery":
-            return rule.validator.to_eql() # shortcut?
-        else:
-            raise NotImplementedError(f"Unsupported query language: {rule.language}")
-
-    @classmethod
     def emit_field(cls, field, value):
         cls.add_mappings_field(field)
         for part in reversed(field.split(".")):
@@ -133,7 +158,7 @@ class emitter:
 
 
 def emit_docs(rule: AnyRuleData) -> List[str]:
-    ast = emitter.ast_from_rule(rule)
+    ast = ast_from_rule(rule)
     return list(chain(*emitter.docs_from_ast(ast)))
 
 
