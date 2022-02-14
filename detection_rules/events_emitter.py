@@ -8,6 +8,7 @@
 import time
 import random
 import contextlib
+from functools import wraps
 from itertools import chain
 from typing import List
 
@@ -48,6 +49,7 @@ class emitter:
             raise ValueError(f"Duplicate emitter for {self.node_type}: {func.__name__}")
         self.emitters[self.node_type] = self
 
+        @wraps(func)
         def wrapper(*args, **kwargs):
             self.total += 1
             ret = func(*args, **kwargs)
